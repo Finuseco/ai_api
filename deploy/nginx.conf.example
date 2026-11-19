@@ -1,0 +1,26 @@
+# Inside the existing TLS server for ai.cashpay-all.com.
+# Existing certificate manager supplies TLS on 443. Keep both app ports private.
+location /api/ {
+    proxy_pass http://127.0.0.1:8096;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_buffering off;
+    proxy_read_timeout 300;
+    client_max_body_size 45m;
+}
+location / {
+    proxy_pass http://127.0.0.1:8095;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout 300;
+    client_max_body_size 30m;
+    add_header Referrer-Policy no-referrer always;
+}
+# Keep the Android WebSocket viewer location from android-nginx.conf.example.
+# Do not log authentication query tokens. Run nginx -t before reloading.

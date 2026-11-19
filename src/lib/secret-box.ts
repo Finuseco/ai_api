@@ -1,0 +1,4 @@
+import {createCipheriv,createDecipheriv,randomBytes} from 'node:crypto';
+function key(){const value=Buffer.from(process.env.INTEGRATION_ENCRYPTION_KEY||'','base64');if(value.length!==32)throw new Error('INTEGRATION_ENCRYPTION_KEY non configurée (32 octets, base64).');return value;}
+export function seal(value:string){const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',key(),iv);return Buffer.concat([iv,cipher.update(value,'utf8'),cipher.final(),cipher.getAuthTag()]).toString('base64');}
+export function unseal(value:string){const buf=Buffer.from(value,'base64');if(buf.length<29)throw new Error('Identifiant chiffré invalide.');const cipher=createDecipheriv('aes-256-gcm',key(),buf.subarray(0,12));cipher.setAuthTag(buf.subarray(-16));return Buffer.concat([cipher.update(buf.subarray(12,-16)),cipher.final()]).toString('utf8');}

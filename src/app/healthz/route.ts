@@ -1,0 +1,1 @@
+import {db} from '@/lib/db';export const dynamic='force-dynamic';export async function GET(){try{await db.query('SELECT 1');return Response.json({service:'JoJo AI API',database:'ready'},{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({service:'JoJo AI API',database:'unavailable'},{status:503});}}

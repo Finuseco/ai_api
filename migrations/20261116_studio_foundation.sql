@@ -1,0 +1,33 @@
+BEGIN;
+CREATE TABLE IF NOT EXISTS jojo_ai_credits (id SERIAL PRIMARY KEY, dev_portal_user_id INTEGER UNIQUE NOT NULL REFERENCES dev_portal_users(id),generation_credits NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK(generation_credits>=0),updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS jojo_ai_projects (id SERIAL PRIMARY KEY,dev_portal_user_id INTEGER NOT NULL REFERENCES dev_portal_users(id),name TEXT NOT NULL,description TEXT,app_template TEXT,is_public BOOLEAN NOT NULL DEFAULT false,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS project_collaborators (id SERIAL PRIMARY KEY,project_id INTEGER NOT NULL REFERENCES jojo_ai_projects(id) ON DELETE CASCADE,user_id INTEGER NOT NULL REFERENCES dev_portal_users(id),role TEXT NOT NULL DEFAULT 'collaborator',status TEXT NOT NULL DEFAULT 'pending',invited_at TIMESTAMPTZ DEFAULT now(),accepted_at TIMESTAMPTZ,UNIQUE(project_id,user_id));
+CREATE TABLE IF NOT EXISTS jojo_ai_project_files (id SERIAL PRIMARY KEY,project_id INTEGER NOT NULL REFERENCES jojo_ai_projects(id) ON DELETE CASCADE,file_path TEXT NOT NULL,file_content TEXT NOT NULL DEFAULT '',UNIQUE(project_id,file_path));
+ALTER TABLE jojo_ai_project_files ADD COLUMN IF NOT EXISTS file_encoding TEXT NOT NULL DEFAULT 'utf8';
+CREATE TABLE IF NOT EXISTS jojo_ai_chat_history(id SERIAL PRIMARY KEY,project_id INTEGER NOT NULL REFERENCES jojo_ai_projects(id) ON DELETE CASCADE,role TEXT NOT NULL,content TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS project_pending_actions(id SERIAL PRIMARY KEY,project_id INTEGER NOT NULL REFERENCES jojo_ai_projects(id) ON DELETE CASCADE,file_path TEXT NOT NULL,content TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',created_at TIMESTAMPTZ DEFAULT now());
+CREATE TABLE IF NOT EXISTS project_databases(id SERIAL PRIMARY KEY,project_id INTEGER NOT NULL REFERENCES jojo_ai_projects(id) ON DELETE CASCADE,name TEXT NOT NULL,type TEXT NOT NULL,url TEXT,manager_url TEXT,created_at TIMESTAMPTZ DEFAULT now());
+ALTER TABLE project_databases ADD COLUMN IF NOT EXISTS connection_ciphertext TEXT;
+CREATE TABLE IF NOT EXISTS jojo_ai_integrations(user_id INTEGER PRIMARY KEY REFERENCES dev_portal_users(id) ON DELETE CASCADE,github_login TEXT NOT NULL,token_ciphertext TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS jojo_ai_git_links(project_id INTEGER PRIMARY KEY REFERENCES jojo_ai_projects(id) ON DELETE CASCADE,repository TEXT NOT NULL,branch TEXT NOT NULL,base_sha TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS jojo_files_project ON jojo_ai_project_files(project_id);
+CREATE TABLE IF NOT EXISTS jojo_ai_generation_runs(id UUID PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES dev_portal_users(id),project_id INTEGER REFERENCES jojo_ai_projects(id) ON DELETE SET NULL,status TEXT NOT NULL,units NUMERIC(12,2) NOT NULL,result JSONB,created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+
+ALTER TABLE jojo_ai_project_files ADD COLUMN IF NOT EXISTS file_mode TEXT NOT NULL DEFAULT '100644';
+ALTER TABLE project_pending_actions ADD COLUMN IF NOT EXISTS base_hash TEXT;
+CREATE TABLE IF NOT EXISTS jojo_ai_openai_accounts(user_id INTEGER PRIMARY KEY REFERENCES dev_portal_users(id) ON DELETE CASCADE,key_ciphertext TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS jojo_ai_daily_credits(user_id INTEGER NOT NULL REFERENCES dev_portal_users(id) ON DELETE CASCADE,credit_day DATE NOT NULL,remaining INTEGER NOT NULL DEFAULT 100 CHECK(remaining BETWEEN 0 AND 100),PRIMARY KEY(user_id,credit_day));
+ALTER TABLE jojo_ai_generation_runs ADD COLUMN IF NOT EXISTS credit_source TEXT NOT NULL DEFAULT 'paid';
+ALTER TABLE jojo_ai_generation_runs ADD COLUMN IF NOT EXISTS credit_day DATE;
+ALTER TABLE jojo_ai_generation_runs ADD COLUMN IF NOT EXISTS progress JSONB;
+ALTER TABLE project_pending_actions ADD COLUMN IF NOT EXISTS file_encoding TEXT NOT NULL DEFAULT 'utf8';
+-- Upgrade existing five-credit grants exactly once, preserving already consumed credits.
+ALTER TABLE jojo_ai_daily_credits ADD COLUMN IF NOT EXISTS grant_limit INTEGER NOT NULL DEFAULT 5;
+ALTER TABLE jojo_ai_daily_credits DROP CONSTRAINT IF EXISTS jojo_ai_daily_credits_remaining_check;
+UPDATE jojo_ai_daily_credits SET remaining=remaining+(100-grant_limit),grant_limit=100 WHERE grant_limit<100;
+ALTER TABLE jojo_ai_daily_credits ALTER COLUMN remaining SET DEFAULT 100;
+ALTER TABLE jojo_ai_daily_credits ALTER COLUMN grant_limit SET DEFAULT 100;
+ALTER TABLE jojo_ai_daily_credits ADD CONSTRAINT jojo_ai_daily_credits_remaining_check CHECK(remaining BETWEEN 0 AND 100);
+ALTER TABLE project_pending_actions ADD COLUMN IF NOT EXISTS runtime_job_id UUID;
+CREATE UNIQUE INDEX IF NOT EXISTS pending_runtime_job_file ON project_pending_actions(project_id,runtime_job_id,file_path) WHERE runtime_job_id IS NOT NULL;
+COMMIT;

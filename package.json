@@ -1,0 +1,47 @@
+{
+  "name": "cashpay-ai-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1 -p 8096",
+    "start": "next start -H 127.0.0.1 -p 8096",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/project-contracts.cjs",
+    "migrate": "node scripts/migrate.cjs",
+    "generations:reconcile": "node scripts/reconcile-generations.cjs",
+    "test:credits": "node tests/credits-integration.cjs",
+    "test:runtime": "node tests/runtime-smoke.cjs"
+  },
+  "dependencies": {
+    "bcryptjs": "2.4.3",
+    "clsx": "2.1.1",
+    "jsonwebtoken": "9.0.2",
+    "jszip": "3.10.1",
+    "next": "14.2.35",
+    "nodemailer": "6.9.14",
+    "pg": "8.12.0",
+    "pg-cursor": "^2.22.1",
+    "pngjs": "^7.0.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "tailwind-merge": "2.4.0",
+    "yauzl": "^3.4.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/jszip": "^3.4.1",
+    "@types/node": "20.14.10",
+    "@types/nodemailer": "^6.4.15",
+    "@types/pg": "8.11.6",
+    "@types/pg-cursor": "^2.7.2",
+    "@types/pngjs": "^6.0.5",
+    "@types/react": "18.3.1",
+    "@types/react-dom": "18.3.0",
+    "@types/yauzl": "^3.4.0",
+    "typescript": "5.5.3"
+  },
+  "packageManager": "npm@11.9.0"
+}
